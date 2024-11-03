@@ -1,20 +1,20 @@
-# The ArgoCD Application for crossplane core components themselves
+# The ArgoCD App of Apps for all Crossplane components
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: crossplane
+  name: provider-gcp
   namespace: argocd
+  labels:
+    crossplane.jonashackt.io: bootstrap
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
-    chart: crossplane
-    repoURL: https://charts.crossplane.io/stable
-    targetRevision: 1.17.2 # this was the latest version of the Helm Chart at the we were working on this.
-    helm:
-      releaseName: crossplane
+    repoURL: https://github.com/developer-guy/crossplane-gitops-in-action-devfest-2024.git
+    targetRevision: HEAD
+    path: gitops/crossplane/provider-gcp
   destination:
     server: https://kubernetes.default.svc
     namespace: crossplane-system
