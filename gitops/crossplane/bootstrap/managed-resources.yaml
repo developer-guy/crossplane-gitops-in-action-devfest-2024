@@ -3,20 +3,20 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: crossplane-bootstrap
+  name: managed-resources
   namespace: argocd
   labels:
     crossplane.jonashackt.io: bootstrap
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-wave: "4"
 spec:
   project: default
   source:
     repoURL: https://github.com/developer-guy/crossplane-gitops-in-action-devfest-2024.git
     targetRevision: HEAD
-    path: gitops/crossplane/bootstrap
+    path: gitops/crossplane/managed-resources
   destination:
     server: https://kubernetes.default.svc
     namespace: crossplane-system

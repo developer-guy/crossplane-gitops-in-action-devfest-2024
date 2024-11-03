@@ -9,12 +9,14 @@ metadata:
     crossplane.jonashackt.io: bootstrap
   finalizers:
     - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   project: default
   source:
     repoURL: https://github.com/developer-guy/crossplane-gitops-in-action-devfest-2024.git
     targetRevision: HEAD
-    path: gitops/crossplane/provider-gcp
+    path: gitops/crossplane/provider-gcp/provider
   destination:
     server: https://kubernetes.default.svc
     namespace: crossplane-system
