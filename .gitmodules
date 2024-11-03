@@ -1,0 +1,4 @@
+[submodule "configuration-gcp-database"]
+	path = configuration-gcp-database
+	url = https://github.com/upbound/configuration-gcp-database
+	branch = release-0.1
