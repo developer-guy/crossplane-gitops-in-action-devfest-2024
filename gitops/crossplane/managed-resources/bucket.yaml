@@ -1,0 +1,13 @@
+apiVersion: storage.gcp.upbound.io/v1beta2
+kind: Bucket
+metadata:
+  annotations:
+    meta.upbound.io/example-id: storage/v1beta1/bucketobject
+  labels:
+    testing.upbound.io/example-name: crossplane-example-bucket-C171E7B5
+  name: crossplane-example-bucket-AAFD3807
+spec:
+  forProvider:
+    deletionPolicy: Delete
+    location: EU
+    storageClass: MULTI_REGIONAL

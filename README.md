@@ -152,31 +152,6 @@ kubectl get pods -n crossplane-system
 
 ## Manage GCP
 
-To make it work on GCP side, you need to create a Service Account and put it's key to a Kubernetes Secret:
-
-```bash
-# Step 1: Set up variables for project ID and service account name
-PROJECT_ID="your-project-id"  # Replace with your actual project ID
-SERVICE_ACCOUNT_NAME="crossplane-gcp-sa"
-
-# Step 2: Create the service account
-gcloud iam service-accounts create $SERVICE_ACCOUNT_NAME \
-    --display-name="Crossplane GCP Service Account"
-
-# Step 3: Assign the Editor role to the service account
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-    --member="serviceAccount:$SERVICE_ACCOUNT_NAME@$PROJECT_ID.iam.gserviceaccount.com" \
-    --role="roles/editor"
-
-# Step 4: Generate a JSON key for the service account
-gcloud iam service-accounts keys create $PWD/gcp-crossplane-key.json \
-    --iam-account="$SERVICE_ACCOUNT_NAME@$PROJECT_ID.iam.gserviceaccount.com"
-
-# Create the secret
-kubectl create secret generic gcp-credentials \
-  -n crossplane-system --from-file=creds.json=$PWD/gcp-crossplane-key.json
-```
-
 First, add GCP Provider application, and it's configuration:
 
 ```bash
@@ -228,7 +203,50 @@ metadata:
 spec:
   package: xpkg.upbound.io/upbound/provider-gcp-storage:v1.8.3
 EOF
+```
 
+We need to push those changes, then create the `provider-gcp` application:
+
+```bash
+# Push changes
+git add .
+git commit -am "Deploy GCP provider for storage"
+git push
+
+# Create the crossplane-bootstrap app
+kubectl apply -f ./gitops/crossplane/bootstrap/provider.yaml
+```
+
+### Resources
+
+To be able to create resources on GCP side, you need to create a Service Account and put it's key to a Kubernetes Secret:
+
+```bash
+# Step 1: Set up variables for project ID and service account name
+PROJECT_ID="your-project-id"  # Replace with your actual project ID
+SERVICE_ACCOUNT_NAME="crossplane-gcp-sa"
+
+# Step 2: Create the service account
+gcloud iam service-accounts create $SERVICE_ACCOUNT_NAME \
+    --display-name="Crossplane GCP Service Account"
+
+# Step 3: Assign the Editor role to the service account
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:$SERVICE_ACCOUNT_NAME@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/editor"
+
+# Step 4: Generate a JSON key for the service account
+gcloud iam service-accounts keys create $PWD/gcp-crossplane-key.json \
+    --iam-account="$SERVICE_ACCOUNT_NAME@$PROJECT_ID.iam.gserviceaccount.com"
+
+# Create the secret
+kubectl create secret generic gcp-credentials \
+  -n crossplane-system --from-file=creds.json=$PWD/gcp-crossplane-key.json
+```
+
+Create the provider config with this information:
+
+```bash
 cat <<EOF > ./gitops/crossplane/provider-gcp/providerconfig.yaml
 apiVersion: gcp.upbound.io/v1beta1
 kind: ProviderConfig
@@ -247,14 +265,84 @@ spec:
 EOF
 ```
 
-We need to push those changes, then create the `provider-gcp` application:
+Push the changes to take effect:
 
 ```bash
 # Push changes
 git add .
-git commit -am "Deploy crossplane"
+git commit -am "Create GCP provider configuration"
+git push
+```
+
+## GCP Managed Resources
+
+Add managed resources application to argocd:
+
+```bash
+cat <<EOF > ./gitops/crossplane/bootstrap/managed-resources.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: managed-resources
+  namespace: argocd
+  labels:
+    crossplane.jonashackt.io: bootstrap
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/koksay/crossplane-gitops-in-action-devfest-2024.git
+    targetRevision: HEAD
+    path: gitops/crossplane/managed-resources
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+    - CreateNamespace=true
+    retry:
+      limit: 1
+      backoff:
+        duration: 5s 
+        factor: 2 
+        maxDuration: 1m
+EOF
+
+cat <<EOF > ./gitops/crossplane/managed-resources/bucket.yaml
+apiVersion: storage.gcp.upbound.io/v1beta2
+kind: Bucket
+metadata:
+  annotations:
+    meta.upbound.io/example-id: storage/v1beta1/bucketobject
+  labels:
+    testing.upbound.io/example-name: crossplane-example-bucket-$(uuidgen | cut -c -8)
+  name: crossplane-example-bucket-$(uuidgen | cut -c -8)
+spec:
+  forProvider:
+    deletionPolicy: Delete
+    location: EU
+    storageClass: MULTI_REGIONAL
+EOF
+```
+
+Push the code and apply the `managed-resources` application, and check the bucket being created!
+
+```bash
+# Push changes
+git add .
+git commit -am "Create a bucket"
 git push
 
 # Create the crossplane-bootstrap app
-kubectl apply -f ./gitops/crossplane/bootstrap/provider.yaml
+kubectl apply -f ./gitops/crossplane/bootstrap/managed-resources.yaml
 ```
+
+
+## Composition 
+
+> TODO!
