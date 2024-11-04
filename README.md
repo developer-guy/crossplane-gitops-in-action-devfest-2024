@@ -49,7 +49,7 @@ argocd login localhost:8080 --username admin --password ${ARGO_PASS} --insecure
 
 We are ready to use GitOps. Let's start with Crossplane deploymenet:
 
-First, craete the app of the apps:
+First, create the app of the apps:
 
 ```bash
 cat <<EOF > ./gitops/crossplane/crossplane.yaml
@@ -161,8 +161,6 @@ kind: Application
 metadata:
   name: provider-gcp
   namespace: argocd
-  labels:
-    crossplane.jonashackt.io: bootstrap
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
@@ -198,8 +196,6 @@ apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
   name: provider-gcp-storage
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
 spec:
   package: xpkg.upbound.io/upbound/provider-gcp-storage:v1.8.3
 EOF
@@ -223,25 +219,34 @@ To be able to create resources on GCP side, you need to create a Service Account
 
 ```bash
 # Step 1: Set up variables for project ID and service account name
-PROJECT_ID="your-project-id"  # Replace with your actual project ID
+PROJECT_ID=$(gcloud config get-value project)  # Replace with your actual project ID
 SERVICE_ACCOUNT_NAME="crossplane-gcp-sa"
+SERVICE_ACCOUNT_KEY="gcp-crossplane-key.json"
+SECRET_NAME="gcp-credentials"
+SECRET_KEY="creds.json"
 
 # Step 2: Create the service account
 gcloud iam service-accounts create $SERVICE_ACCOUNT_NAME \
     --display-name="Crossplane GCP Service Account"
 
-# Step 3: Assign the Editor role to the service account
+# Step 3: Assign the roles to the service account
 gcloud projects add-iam-policy-binding $PROJECT_ID \
     --member="serviceAccount:$SERVICE_ACCOUNT_NAME@$PROJECT_ID.iam.gserviceaccount.com" \
-    --role="roles/editor"
+    --role="roles/cloudsql.admin"
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:$SERVICE_ACCOUNT_NAME@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/compute.admin"
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:$SERVICE_ACCOUNT_NAME@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/servicenetworking.networksAdmin"
 
 # Step 4: Generate a JSON key for the service account
-gcloud iam service-accounts keys create $PWD/gcp-crossplane-key.json \
+gcloud iam service-accounts keys create $PWD/$SERVICE_ACCOUNT_KEY \
     --iam-account="$SERVICE_ACCOUNT_NAME@$PROJECT_ID.iam.gserviceaccount.com"
 
 # Create the secret
-kubectl create secret generic gcp-credentials \
-  -n crossplane-system --from-file=creds.json=$PWD/gcp-crossplane-key.json
+kubectl create secret generic $SECRET_NAME \
+  -n crossplane-system --from-file=$SECRET_KEY=$PWD/$SERVICE_ACCOUNT_KEY
 ```
 
 Create the provider config with this information:
@@ -257,8 +262,8 @@ metadata:
 spec:
   credentials:
     secretRef:
-      key: creds.json
-      name: gcp-credentials
+      key: $SECRET_KEY
+      name: $SECRET_NAME
       namespace: crossplane-system
     source: Secret
   projectID: $PROJECT_ID
@@ -285,12 +290,10 @@ kind: Application
 metadata:
   name: managed-resources
   namespace: argocd
-  labels:
-    crossplane.jonashackt.io: bootstrap
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-wave: "3"
 spec:
   project: default
   source:
