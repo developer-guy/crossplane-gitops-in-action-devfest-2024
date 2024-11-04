@@ -5,7 +5,7 @@
 * kind
 * argocd
 * kustomize
-* up
+* git
 
 ## Setup
 
@@ -366,4 +366,4 @@ argocd app sync argocd/managed-resources
 
 ## Composition 
 
-> TODO!
+Checkout the example in the [GCP database example](./configuration-gcp-database/) module.
