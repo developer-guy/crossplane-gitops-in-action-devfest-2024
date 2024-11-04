@@ -31,6 +31,20 @@ kubectl get pods -n argocd
 kubectl wait pod --all --for=condition=Ready --namespace=argocd --timeout=600s
 ```
 
+To access argocd, you can use the CLI tool or the Web UI:
+
+```bash
+# First, port forward to the argocd server
+kubectl port-forward svc/argocd-server 8080:443 -n argocd
+
+# Get the initial admin password
+ARGO_PASS=$(kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 -d)
+
+# Connect using CLI
+# If you want to connect to the UI, you can use https://localhost:8080
+argocd login localhost:8080 --username admin --password ${ARGO_PASS} --insecure
+```
+
 ### Argo Applications
 
 We are ready to use GitOps. Let's start with Crossplane deploymenet:
@@ -115,6 +129,19 @@ spec:
 EOF
 ```
 
+We need to push our changes to our repo. Then, when we create the `crossplane-bootstrap` app, ArgoCD will take care of deploying Crossplane Helm Chart for us.
 
+```bash
+# Push changes
+git add .
+git commit -am "Deploy crossplane"
+git push
+
+# Create the crossplane-bootstrap app
+kubectl apply -f ./gitops/crossplane/crossplane.yaml
+
+# You can manually sync argocd, and check the app status
+
+```
 
 ## Manage GCP
