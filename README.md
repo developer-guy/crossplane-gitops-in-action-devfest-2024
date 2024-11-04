@@ -321,7 +321,7 @@ metadata:
     meta.upbound.io/example-id: storage/v1beta1/bucketobject
   labels:
     testing.upbound.io/example-name: crossplane-example-bucket-$(uuidgen | cut -c -8)
-  name: crossplane-example-bucket-$(uuidgen | cut -c -8)
+  name: crossplane-example-bucket
 spec:
   forProvider:
     deletionPolicy: Delete
