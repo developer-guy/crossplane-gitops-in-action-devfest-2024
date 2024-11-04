@@ -257,8 +257,6 @@ apiVersion: gcp.upbound.io/v1beta1
 kind: ProviderConfig
 metadata:
   name: default
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
 spec:
   credentials:
     secretRef:
