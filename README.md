@@ -141,7 +141,110 @@ git push
 kubectl apply -f ./gitops/crossplane/crossplane.yaml
 
 # You can manually sync argocd, and check the app status
+argocd app sync argocd/crossplane-bootstrap
 
+# List the apps
+argocd app list
+
+# Now, check the pods in the crossplane-system namespace
+kubectl get pods -n crossplane-system
 ```
 
 ## Manage GCP
+
+To make it work on GCP side, you need to create a Service Account and put it's key to a Kubernetes Secret:
+
+```bash
+# Step 1: Set up variables for project ID and service account name
+PROJECT_ID="your-project-id"  # Replace with your actual project ID
+SERVICE_ACCOUNT_NAME="crossplane-gcp-sa"
+
+# Step 2: Create the service account
+gcloud iam service-accounts create $SERVICE_ACCOUNT_NAME \
+    --display-name="Crossplane GCP Service Account"
+
+# Step 3: Assign the Editor role to the service account
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:$SERVICE_ACCOUNT_NAME@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/editor"
+
+# Step 4: Generate a JSON key for the service account
+gcloud iam service-accounts keys create $PWD/gcp-crossplane-key.json \
+    --iam-account="$SERVICE_ACCOUNT_NAME@$PROJECT_ID.iam.gserviceaccount.com"
+
+# Create the secret
+kubectl create secret generic gcp-credentials \
+  -n crossplane-system --from-file=creds.json=$PWD/gcp-crossplane-key.json
+```
+
+First, add GCP Provider application, and it's configuration:
+
+```bash
+cat <<EOF > ./gitops/crossplane/bootstrap/provider.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: provider-gcp
+  namespace: argocd
+  labels:
+    crossplane.jonashackt.io: bootstrap
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/developer-guy/crossplane-gitops-in-action-devfest-2024.git
+    targetRevision: HEAD
+    path: gitops/crossplane/provider-gcp
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  syncPolicy:
+    automated:
+      prune: true    
+    syncOptions:
+    - CreateNamespace=true
+    retry:
+      limit: 1
+      backoff:
+        duration: 5s 
+        factor: 2 
+        maxDuration: 1m
+EOF
+```
+
+Create the provider configuration:
+
+```bash
+cat <<EOF > ./gitops/crossplane/provider-gcp/storage-provider.yaml
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-gcp-storage
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  package: xpkg.upbound.io/upbound/provider-gcp-storage:v1.8.3
+EOF
+
+cat <<EOF > ./gitops/crossplane/provider-gcp/providerconfig.yaml
+apiVersion: gcp.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  credentials:
+    secretRef:
+      key: creds.json
+      name: gcp-credentials
+      namespace: crossplane-system
+    source: Secret
+  projectID: $PROJECT_ID
+EOF
+```
+
+We need to push those changes
