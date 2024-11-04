@@ -314,7 +314,7 @@ spec:
 EOF
 
 # Random ID for the bucket name:
-BUCKET_ID=$(uuidgen | cut -c -8)
+BUCKET_ID=$(uuidgen | cut -c -8 | tr '[:upper:]' '[:lower:]')
 
 cat <<EOF > ./gitops/crossplane/managed-resources/bucket.yaml
 apiVersion: storage.gcp.upbound.io/v1beta2
