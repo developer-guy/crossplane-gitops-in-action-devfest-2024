@@ -4,8 +4,8 @@ metadata:
   annotations:
     meta.upbound.io/example-id: storage/v1beta1/bucketobject
   labels:
-    testing.upbound.io/example-name: crossplane-example-bucket-6D18E87C
-  name: crossplane-example-bucket
+    testing.upbound.io/example-name: crossplane-example-bucket-F338F23D
+  name: crossplane-example-bucket-F338F23D
 spec:
   forProvider:
     deletionPolicy: Delete

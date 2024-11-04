@@ -313,6 +313,9 @@ spec:
         maxDuration: 1m
 EOF
 
+# Random ID for the bucket name:
+BUCKET_ID=$(uuidgen | cut -c -8)
+
 cat <<EOF > ./gitops/crossplane/managed-resources/bucket.yaml
 apiVersion: storage.gcp.upbound.io/v1beta2
 kind: Bucket
@@ -320,8 +323,8 @@ metadata:
   annotations:
     meta.upbound.io/example-id: storage/v1beta1/bucketobject
   labels:
-    testing.upbound.io/example-name: crossplane-example-bucket-$(uuidgen | cut -c -8)
-  name: crossplane-example-bucket
+    testing.upbound.io/example-name: crossplane-example-bucket-$BUCKET_ID
+  name: crossplane-example-bucket-$BUCKET_ID
 spec:
   forProvider:
     deletionPolicy: Delete
