@@ -195,7 +195,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/developer-guy/crossplane-gitops-in-action-devfest-2024.git
+    repoURL: https://github.com/koksay/crossplane-gitops-in-action-devfest-2024.git
     targetRevision: HEAD
     path: gitops/crossplane/provider-gcp
   destination:
@@ -247,4 +247,14 @@ spec:
 EOF
 ```
 
-We need to push those changes
+We need to push those changes, then create the `provider-gcp` application:
+
+```bash
+# Push changes
+git add .
+git commit -am "Deploy crossplane"
+git push
+
+# Create the crossplane-bootstrap app
+kubectl apply -f ./gitops/crossplane/bootstrap/provider.yaml
+```
