@@ -8,6 +8,5 @@ metadata:
   name: crossplane-example-bucket-e48be51a
 spec:
   forProvider:
-    deletionPolicy: Delete
     location: EU
     storageClass: MULTI_REGIONAL
