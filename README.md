@@ -70,7 +70,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/koksay/crossplane-gitops-in-action-devfest-2024.git
+    repoURL: https://github.com/developer-guy/crossplane-gitops-in-action-devfest-2024.git
     targetRevision: HEAD
     path: gitops/crossplane/bootstrap
   destination:
@@ -170,7 +170,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/koksay/crossplane-gitops-in-action-devfest-2024.git
+    repoURL: https://github.com/developer-guy/crossplane-gitops-in-action-devfest-2024.git
     targetRevision: HEAD
     path: gitops/crossplane/provider-gcp
   destination:
@@ -294,7 +294,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/koksay/crossplane-gitops-in-action-devfest-2024.git
+    repoURL: https://github.com/developer-guy/crossplane-gitops-in-action-devfest-2024.git
     targetRevision: HEAD
     path: gitops/crossplane/managed-resources
   destination:
@@ -327,7 +327,6 @@ metadata:
   name: crossplane-example-bucket-$BUCKET_ID
 spec:
   forProvider:
-    deletionPolicy: Delete
     location: EU
     storageClass: MULTI_REGIONAL
 EOF
