@@ -35,7 +35,7 @@ To access argocd, you can use the CLI tool or the Web UI:
 
 ```bash
 # First, port forward to the argocd server
-kubectl port-forward svc/argocd-server 8080:443 -n argocd
+kubectl port-forward svc/argocd-server 8080:443 -n argocd &
 
 # Get the initial admin password
 ARGO_PASS=$(kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 -d)
@@ -52,10 +52,7 @@ We are ready to use GitOps. Let's start with Crossplane deploymenet:
 First, create the app of the apps:
 
 ```bash
-cat <<EOF > ./gitops/crossplane/crossplane.yaml
-##########################################################
-## The ArgoCD App of Apps for all Crossplane components ##
-##########################################################
+cat <<EOF > gitops/crossplane/crossplane.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -93,13 +90,17 @@ Let's create the initial Application:
 ```bash
 # Create the crossplane-bootstrap app
 kubectl apply -f ./gitops/crossplane/crossplane.yaml
+
+# Let's push the changes
+git add gitops/crossplane/crossplane.yaml
+git commit -am "initial commit for crossplane setup"
+git push
 ```
 
 Then, create the Crossplane installation:
 
 ```bash
-cat <<EOF > ./gitops/crossplane/bootstrap/crossplane-install.yaml
-# The ArgoCD Application for crossplane core components themselves
+cat <<EOF > gitops/crossplane/bootstrap/crossplane-install.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -138,8 +139,8 @@ We need to push our changes to our repo. Then, when we create the `crossplane-bo
 
 ```bash
 # Push changes
-git add .
-git commit -am "Deploy crossplane"
+git add gitops/crossplane/bootstrap/crossplane-install.yaml
+git commit -am "let's deploy the crossplane"
 git push
 
 # You can manually sync argocd, and check the app status
@@ -157,7 +158,7 @@ kubectl get pods -n crossplane-system
 First, add GCP Provider application, and it's configuration:
 
 ```bash
-cat <<EOF > ./gitops/crossplane/bootstrap/provider.yaml
+cat <<EOF > gitops/crossplane/bootstrap/provider.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -193,14 +194,19 @@ EOF
 Let's push the changes and create the `provider-gcp` application:
 
 ```bash
-# Create the crossplane-bootstrap app
-kubectl apply -f ./gitops/crossplane/bootstrap/provider.yaml
+# Create the provider-gcp app
+git add gitops/crossplane/bootstrap/provider.yaml
+git commit -am "let's create the provider-gcp application"
+git push
+
+# to not wait for the sync, you can manually sync the app
+argocd app sync argocd/crossplane-bootstrap
 ```
 
 Create the provider configuration:
 
 ```bash
-cat <<EOF > ./gitops/crossplane/provider-gcp/storage-provider.yaml
+cat <<EOF > gitops/crossplane/provider-gcp/storage-provider.yaml
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
@@ -214,8 +220,8 @@ We need to push those changes, then create the `provider-gcp-storage` provider:
 
 ```bash
 # Push changes
-git add .
-git commit -am "Deploy GCP provider for storage"
+git add gitops/crossplane/provider-gcp/storage-provider.yaml
+git commit -am "let's create the GCP storage provider"
 git push
 
 # to not wait for the sync, you can manually sync the app
@@ -254,27 +260,18 @@ gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
     --role="roles/servicenetworking.networksAdmin"
 
 # Step 4: Generate a JSON key for the service account
-<<<<<<< Updated upstream
-gcloud iam service-accounts keys create $PWD/$SERVICE_ACCOUNT_KEY \
-    --iam-account="$SERVICE_ACCOUNT_NAME@$PROJECT_ID.iam.gserviceaccount.com"
-
-# Create the secret
-kubectl create secret generic $SECRET_NAME \
-  -n crossplane-system --from-file=$SECRET_KEY=$PWD/$SERVICE_ACCOUNT_KEY
-=======
 gcloud iam service-accounts keys create gcp-crossplane-key.json \
     --iam-account="$SERVICE_ACCOUNT_NAME@$PROJECT_ID.iam.gserviceaccount.com"
 
 # Create the secret
 kubectl create secret generic "${SECRET_NAME}" \
   -n crossplane-system --from-file="${SECRET_KEY}=gcp-crossplane-key.json"
->>>>>>> Stashed changes
 ```
 
 Create the provider config with this information:
 
 ```bash
-cat <<EOF > ./gitops/crossplane/provider-gcp/providerconfig.yaml
+cat <<EOF > gitops/crossplane/provider-gcp/providerconfig.yaml
 apiVersion: gcp.upbound.io/v1beta1
 kind: ProviderConfig
 metadata:
@@ -294,8 +291,8 @@ Push the changes to take effect:
 
 ```bash
 # Push changes
-git add .
-git commit -am "Create GCP provider configuration"
+git add gitops/crossplane/provider-gcp/providerconfig.yaml
+git commit -am "let's create the GCP provider configuration"
 git push
 
 # to not wait for the sync, you can manually sync the app
@@ -307,7 +304,7 @@ argocd app sync argocd/provider-gcp
 Add managed resources application to argocd:
 
 ```bash
-cat <<EOF > ./gitops/crossplane/bootstrap/managed-resources.yaml
+cat <<EOF > gitops/crossplane/bootstrap/managed-resources.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -338,12 +335,10 @@ spec:
         factor: 2 
         maxDuration: 1m
 EOF
+```
 
-# Create the crossplane-bootstrap app
-kubectl apply -f ./gitops/crossplane/bootstrap/managed-resources.yaml
+Push the changes and create the `managed-resources` application:
 
-<<<<<<< Updated upstream
-=======
 ```bash
 # Create the managed-resources app
 git add gitops/crossplane/bootstrap/managed-resources.yaml
@@ -357,19 +352,18 @@ argocd app sync argocd/crossplane-bootstrap
 Now, you can create resources on GCP side. Let's create a bucket:
 
 ```bash
->>>>>>> Stashed changes
 # Random ID for the bucket name:
 BUCKET_ID=$(uuidgen | cut -c -8 | tr '[:upper:]' '[:lower:]')
 
-cat <<EOF > ./gitops/crossplane/managed-resources/bucket.yaml
+cat <<EOF > gitops/crossplane/managed-resources/bucket.yaml
 apiVersion: storage.gcp.upbound.io/v1beta2
 kind: Bucket
 metadata:
   annotations:
     meta.upbound.io/example-id: storage/v1beta1/bucketobject
   labels:
-    testing.upbound.io/example-name: crossplane-example-bucket-$BUCKET_ID
-  name: crossplane-example-bucket-$BUCKET_ID
+    testing.upbound.io/example-name: devfest-izmir-24-$BUCKET_ID
+  name: devfest-izmir-24-$BUCKET_ID
 spec:
   forProvider:
     location: EU
@@ -381,8 +375,8 @@ Push the code and apply the `managed-resources` application, and check the bucke
 
 ```bash
 # Push changes
-git add .
-git commit -am "Create a bucket"
+git add gitops/crossplane/managed-resources/bucket.yaml
+git commit -am "let's create the bucket"
 git push
 
 # also the managed-resources app
