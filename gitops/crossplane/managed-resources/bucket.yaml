@@ -4,8 +4,8 @@ metadata:
   annotations:
     meta.upbound.io/example-id: storage/v1beta1/bucketobject
   labels:
-    testing.upbound.io/example-name: devfest-izmir-24-94b5c8c6
-  name: devfest-izmir-24-94b5c8c6
+    testing.upbound.io/example-name: devopstr-crossplane-24-94b5c8c6
+  name: devopstr-crossplane-24-94b5c8c6
 spec:
   forProvider:
     location: EU
